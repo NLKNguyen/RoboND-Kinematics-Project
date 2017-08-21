@@ -1,18 +1,6 @@
-## Project: Kinematics Pick & Place
-### Writeup Template: You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
+Project: Kinematics Pick & Place
+================================
 
----
-
-
-**Steps to complete the project:**  
-
-
-1. Set up your ROS Workspace.
-2. Download or clone the [project repository](https://github.com/udacity/RoboND-Kinematics-Project) into the ***src*** directory of your ROS Workspace.  
-3. Experiment with the forward_kinematics environment and get familiar with the robot.
-4. Launch in [demo mode](https://classroom.udacity.com/nanodegrees/nd209/parts/7b2fd2d7-e181-401e-977a-6158c77bf816/modules/8855de3f-2897-46c3-a805-628b5ecf045b/lessons/91d017b1-4493-4522-ad52-04a74a01094c/concepts/ae64bb91-e8c4-44c9-adbe-798e8f688193).
-5. Perform Kinematic Analysis for the robot following the [project rubric](https://review.udacity.com/#!/rubrics/972/view).
-6. Fill in the `IK_server.py` with your Inverse Kinematics code. 
 
 
 [//]: # (Image References)
@@ -26,28 +14,24 @@
 [T4_5]: ./misc_images/T4_5.gif
 [T5_6]: ./misc_images/T5_6.gif
 [T6_EE]: ./misc_images/T6_EE.gif
+[theta1]: ./misc_images/theta1.gif
+[theta2]: ./misc_images/theta2.gif
+[theta3]: ./misc_images/theta3.gif
+[theta4]: ./misc_images/theta4.gif
+[theta5]: ./misc_images/theta5.gif
+[theta6]: ./misc_images/theta6.gif
+[sides]: ./misc_images/sides.png
+[angles]: ./misc_images/angles.png
 
 
-## [Rubric](https://review.udacity.com/#!/rubrics/972/view) Points
-### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
 
----
-### Writeup / README
 
-#### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  
-
-You're reading it!
-
-### Kinematic Analysis
+# Kinematic Analysis
 #### 1. Run the forward_kinematics demo and evaluate the kr210.urdf.xacro file to perform kinematic analysis of Kuka KR210 robot and derive its DH parameters.
 
 Coordinate systems for Modified DH convention: 
 
 ![][link_frames]
-
-
-`O(i)` is the origin for link i frame, and `X(i)`, `Z(i)` are the X and Z axis correspondingly, and Z represents the axis of rotation(translation in case of prismatic joints). Since we are using a right handed coordinate system, `Y(i)` can be calculated accordingly.
-
 
 **Modified DH Parameter** table
 
@@ -159,6 +143,7 @@ Then we multiply these matrices to obtain the pose of the end-effectors' frame e
 T0_EE = T0_1 * T1_2 * T2_3 * T3_4 * T4_5 * T5_6 * T6_EE
 ```
 
+Obtain the final homogenous transformation in euler angles from quaternion representation of the end-effector orientation
 ```Python
 # Extract end-effector position and orientation from request
 # px,py,pz = end-effector position
@@ -173,13 +158,114 @@ pz = req.poses[x].position.z
 
 ```
 
+```Python
+r, p, y = symbols('r p y')
+
+ROT_x = Matrix([ [1,      0, 0       ],
+                 [0, cos(r), -sin(r) ],
+                 [0, sin(r), cos(r)  ] ]) # ROLL 
+
+ROT_y = Matrix([ [cos(p),  0, sin(p) ],
+                 [0,       1, 0      ],
+                 [-sin(p), 0, cos(p) ] ]) # PITCH
+
+ROT_z = Matrix([ [cos(y), -sin(y), 0 ],
+                 [sin(y),  cos(y), 0 ],
+                 [0,            0, 1 ] ]) # YAW
+
+ROT_EE = ROT_z * ROT_y * ROT_x
+
+ROT_ERROR = ROT_z.subs(y, radians(180)) * ROT_y.subs(p, radians(-90))
+
+ROT_EE = ROT_EE * ROT_ERROR
+
+ROT_EE_evaled = ROT_EE.subs({'r': roll, 'p': pitch, 'y': yaw})
+```
+
 #### 3. Decouple Inverse Kinematics problem into Inverse Position Kinematics and inverse Orientation Kinematics; doing so derive the equations to calculate all individual joint angles.
 
-And here's where you can draw out and show your math for the derivation of your theta angles. 
 
-![alt text][image2]
+Compute wrist center position using the end-effector pose:
+```Python
+EE = Matrix([ [px],
+              [py],
+              [pz] ])
 
-### Project Implementation
+
+WC = EE - (0.303) * ROT_EE_evaled[:,2]
+```
+
+**Inverse Position Kinematics**
+
+**Theta1** computation: ![theta1]
+
+```Python
+theta1 = atan2(WC[1], WC[0])
+```
+
+**Theta2** and **theta3** computation: 
+
+SSS triangle for theta2 and theta3
+
+![sides]
+
+![angles]
+
+
+
+
+```Python
+side_a = 1.501
+side_b = sqrt(pow((sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35), 2) + 
+                pow((WC[2] - 0.75), 2))
+side_c = 1.25
+
+angle_a = acos((side_b*side_b + side_c*side_c - side_a*side_a) / 
+                (2 * side_b * side_c))
+
+angle_b = acos((side_a*side_a + side_c*side_c - side_b*side_b) / 
+                (2 * side_a * side_c))
+
+angle_c = acos((side_a*side_a + side_b*side_b - side_c*side_c) / 
+                (2 * side_a * side_b))
+
+```
+
+![theta2]
+```Python
+theta2 = pi / 2 - angle_a - atan2(WC[2] - 0.75, sqrt(WC[0]*WC[0] + WC[1]*WC[1]) - 0.35)
+```
+
+![theta3]
+```Python
+theta3 = pi / 2 - (angle_b + 0.036) # 0.036 accounts for sag in link4 of -0.054m
+```
+
+**Inverse Orientation Kinematics**
+
+**Theta4**, **theta5**, and **theta6** computation:
+```Python
+R0_3 = T0_1[0:3, 0:3] * T1_2[0:3, 0:3] * T2_3[0:3, 0:3]
+R0_3 = R0_3.evalf(subs={q1: theta1, q2: theta2, q3: theta3})
+
+R3_6 = R0_3.inv("LU") * ROT_EE_evaled
+```
+
+![theta4]
+```Python
+theta4 = atan2(R3_6[2,2], -R3_6[0,2])
+```
+
+![theta5]
+```Python
+theta5 = atan2(sqrt(R3_6[0,2]*R3_6[0,2] + R3_6[2,2]*R3_6[2,2]), R3_6[1,2])
+```
+
+![theta6]
+```Python
+theta6 = atan2(-R3_6[1,1], R3_6[1,0])
+```
+# Project Implementation
 
 #### 1. Fill in the `IK_server.py` file with properly commented python code for calculating Inverse Kinematics based on previously performed Kinematic Analysis. Your code must guide the robot to successfully complete 8/10 pick and place cycles. Briefly discuss the code you implemented and your results. 
 
@@ -187,7 +273,5 @@ And here's where you can draw out and show your math for the derivation of your 
 Here I'll talk about the code, what techniques I used, what worked and why, where the implementation might fail and how I might improve it if I were going to pursue this project further.  
 
 
-And just for fun, another example image:
-![alt text][image3]
 
 

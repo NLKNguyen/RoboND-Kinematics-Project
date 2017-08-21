@@ -270,8 +270,13 @@ theta6 = atan2(-R3_6[1,1], R3_6[1,0])
 #### 1. Fill in the `IK_server.py` file with properly commented python code for calculating Inverse Kinematics based on previously performed Kinematic Analysis. Your code must guide the robot to successfully complete 8/10 pick and place cycles. Briefly discuss the code you implemented and your results. 
 
 
-Here I'll talk about the code, what techniques I used, what worked and why, where the implementation might fail and how I might improve it if I were going to pursue this project further.  
+The implementation is filled in 2 parts as the provided `IK_server.py` suggests. The forward kinematics part is explained in section 1 and 2 in the above analysis, and the inverse kinematics part is explained in section 3.
 
+Possible improvements:
+
+* Make it run faster by caching parts that are recomputed many times.
+
+* Instead of going with the only IKM solution that it finds, generate multiple solutions and select the best one can reduce parts of further computations along the way. Moreover, that also reduces electric consumption when running on a real robot.
 
 
 

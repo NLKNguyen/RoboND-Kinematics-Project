@@ -125,11 +125,13 @@ def handle_calculate_IK(req):
             theta1 = atan2(WC[1], WC[0])
 
             # SSS triangle for theta2 and theta3
+            # Get all the sides
             side_a = 1.501
             side_b = sqrt(pow((sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35), 2) + 
                           pow((WC[2] - 0.75), 2))
             side_c = 1.25
             
+            # Then compute the angles
             angle_a = acos((side_b*side_b + side_c*side_c - side_a*side_a) / 
                            (2 * side_b * side_c))
 
@@ -139,17 +141,18 @@ def handle_calculate_IK(req):
             angle_c = acos((side_a*side_a + side_b*side_b - side_c*side_c) / 
                            (2 * side_a * side_b))
             
+            # Find theta2 and theta3 based on the angles
             theta2 = pi / 2 - angle_a - atan2(WC[2] - 0.75, sqrt(WC[0]*WC[0] + WC[1]*WC[1]) - 0.35)
-
-
             theta3 = pi / 2 - (angle_b + 0.036) # 0.036 accounts for sag in link4 of -0.054m
 
+            # Rotation from joint 0 to 3
             R0_3 = T0_1[0:3, 0:3] * T1_2[0:3, 0:3] * T2_3[0:3, 0:3]
             R0_3 = R0_3.evalf(subs={q1: theta1, q2: theta2, q3: theta3})
 
             # Obtain rotation matrix from joint 3 to joint 6 that has same orientation as the end effector
             R3_6 = R0_3.inv("LU") * ROT_EE_evaled
          
+            # Find theta4,5,6 similar to the video instruction
             theta4 = atan2(R3_6[2,2], -R3_6[0,2])
             theta5 = atan2(sqrt(R3_6[0,2]*R3_6[0,2] + R3_6[2,2]*R3_6[2,2]), R3_6[1,2])
             theta6 = atan2(-R3_6[1,1], R3_6[1,0])

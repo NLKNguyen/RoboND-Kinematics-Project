@@ -267,16 +267,16 @@ theta6 = atan2(-R3_6[1,1], R3_6[1,0])
 ```
 # Project Implementation
 
-#### 1. Fill in the `IK_server.py` file with properly commented python code for calculating Inverse Kinematics based on previously performed Kinematic Analysis. Your code must guide the robot to successfully complete 8/10 pick and place cycles. Briefly discuss the code you implemented and your results. 
+The implementation follows the order that explained in the above analysis. It is filled in 2 parts as the provided `IK_server.py` suggests. The forward kinematics part is explained in section 1 and 2 in the above analysis, and the inverse kinematics part is explained in section 3.
 
+Python package `sympy` is used to perform math operations in symbolic rather than numerical to avoid loss of precision or breaking constraints due to machine limitation of floating point arithmetic. We defer the numerical evaluation as long as possible, and we only plug actual parameter values to the symbolic formula at the moments that we really need the numerical value. Function `atan2` is also used rather than `acos` at many places to avoid performing division that can cause numerical imprecision thus might break some mathematical constraint of the formula.
 
-The implementation is filled in 2 parts as the provided `IK_server.py` suggests. The forward kinematics part is explained in section 1 and 2 in the above analysis, and the inverse kinematics part is explained in section 3.
+[Demo screencast (8x speed up)](https://www.youtube.com/watch?v=OM7BoL9uEjU)
 
-Possible improvements:
+The result of the implementation is not bad. The robot arm can pick and place correctly more than 8/10 cycles. However, the movement appears to be very ineffective. Possible improvements that I would like to make:
 
 * Make it run faster by caching parts that are recomputed many times.
 
 * Instead of going with the only IKM solution that it finds, generate multiple solutions and select the best one can reduce parts of further computations along the way. Moreover, that also reduces electric consumption when running on a real robot.
-
 
 

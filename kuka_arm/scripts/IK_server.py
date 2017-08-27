@@ -114,18 +114,27 @@ def handle_calculate_IK(req):
                  req.poses[x].orientation.z, req.poses[x].orientation.w])
 
             ROT_EE_evaled = ROT_EE.subs({'r': roll, 'p': pitch, 'y': yaw})
-
+            
+            # End-effector pose
             EE = Matrix([ [px],
                           [py],
                           [pz] ])
 
+            # Wrist center position 
             WC = EE - (0.303) * ROT_EE_evaled[:,2]
 
+            # Inverse Position Kinematics
+
             # Calculate joint angles using Geometric IK method
+            # Use atan2 instead of acos to avoid performing division that can impact
+            # the numerical precision
             theta1 = atan2(WC[1], WC[0])
 
-            # SSS triangle for theta2 and theta3
-            # Get all the sides
+
+            # theta2 and theta3 can be computed using the triangle formed by 
+            # joint 2, joint 3, and wrist center (WC)
+
+            # Get all the sides of the triangle
             side_a = 1.501
             side_b = sqrt(pow((sqrt(WC[0] * WC[0] + WC[1] * WC[1]) - 0.35), 2) + 
                           pow((WC[2] - 0.75), 2))
@@ -145,6 +154,7 @@ def handle_calculate_IK(req):
             theta2 = pi / 2 - angle_a - atan2(WC[2] - 0.75, sqrt(WC[0]*WC[0] + WC[1]*WC[1]) - 0.35)
             theta3 = pi / 2 - (angle_b + 0.036) # 0.036 accounts for sag in link4 of -0.054m
 
+            # Inverse Orientation Kinematics
             # Rotation from joint 0 to 3
             R0_3 = T0_1[0:3, 0:3] * T1_2[0:3, 0:3] * T2_3[0:3, 0:3]
             R0_3 = R0_3.evalf(subs={q1: theta1, q2: theta2, q3: theta3})
